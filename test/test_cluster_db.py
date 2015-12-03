@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from database.cluster_db import Cluster, Image, ClusterDB
 
-db_path = os.path.realpath(os.path.join(__name__, ".."))
+db_path = os.path.realpath(os.path.join(__name__, "..", "test_db"))
 metadata_path = os.path.join(db_path, "test_metadata.csv")
 
 

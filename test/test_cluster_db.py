@@ -19,14 +19,20 @@ class ClusterDBTest(unittest.TestCase):
 
     def test_cluster(self):
         self.assertTrue(isinstance(self.db[(1, 2)], Cluster))
-        c = self.db[(1, 2)]
-        self.assertTrue(isinstance(c.img_num, int))
-        self.assertEqual(16, len(c.center))
-        self.assertEqual(1, c.variances[0])
+        c12 = self.db[(1, 2)]
+        self.assertTrue(isinstance(c12.img_num, int))
         with self.assertRaises(OSError):
             # Lazy load
-            print(c.df)
-        self.assertTrue(isinstance(self.db[(1, 1)].df, pd.DataFrame))
+            print(c12.df)
+        c11 = self.db[(1, 1)]
+        print(c11)
+        print(c11.center)
+        print(c11.df)
+        self.assertEqual(16, len(c11.center))
+        self.assertEqual(0, c11.variances['M12'])
+        c11.norm()
+        self.assertNotEqual(0, c11.variances['M12'])
+        self.assertTrue(isinstance(c11.df, pd.DataFrame))
 
     def test_image(self):
         self.assertTrue(isinstance(self.db[1], Image))

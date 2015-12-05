@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import pandas as pd
 from sklearn.cluster import KMeans
 
@@ -13,7 +14,10 @@ temp_path = os.path.join(CONFIG.backup_data_path, "temp.csv")
 
 
 def load_df(reload=False):
-    if reload:
+    """
+    Concatenates raw data into one Dataframe. Stores it in a temp file for more efficiency.
+    """
+    if reload or not os.path.isfile(temp_path):
         pix_tup_df = pd.read_csv(pixtup_path, header=None)
         pix_tup_df = pix_tup_df.iloc[:, 0:17]
         xy_df = pd.read_csv(xy_path, header=None)
@@ -28,6 +32,9 @@ def load_df(reload=False):
 
 
 def delete_database():
+    """
+    Removes all files from the database and initializes the metadata file.
+    """
     for file_name in os.listdir(CONFIG.data_path):
         os.remove(os.path.join(CONFIG.data_path, file_name))
     open(CONFIG.metadata_path, 'w').close()
@@ -36,6 +43,7 @@ def delete_database():
 def update_clusters(concat_df, img_nums=None, threshold=15):
     """
     Finds the clusters for each image and each diagnosis, saves them in csv files adn adds them to the metadata.
+    Warning: Takes about 45 sec to compute.
 
     Parameters
     ==========
@@ -78,9 +86,12 @@ def update_clusters(concat_df, img_nums=None, threshold=15):
         print("Created all clusters for image %i." % img_num)
 
 
-if __name__ == "__main__":
-    df = load_df(reload=False)
-    import time
+def create_database(reload=False, img_nums=CONFIG.all_samples, threshold=15):
+    df = load_df(reload=reload)
     start = time.time()
-    update_clusters(df, img_nums=CONFIG.all_samples)
+    update_clusters(df, img_nums=img_nums, threshold=threshold)
     print("Total time:", time.time() - start)
+
+
+if __name__ == "__main__":
+    create_database()

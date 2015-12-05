@@ -3,6 +3,22 @@ import pandas as pd
 
 
 class Cluster:
+    """
+    Represents a group of 'similar' points.
+    Call norm() to multiply all Mij by M11.
+
+    Attributes
+    ==========
+
+    img_num: int >=1, the number of the image the points come from
+    cluster_num: int >=1, an id, unique among the clusters of this image.
+        There is no hierarchy among clusters of an image.
+    diagnosis: 3 or 4, the diagnosis of all the points of the cluster.
+    file_path: str, the path to the csv file storing the data of the points from this cluster.
+    df: pd.Dataframe, the Mij values of the points. It is loaded when called for the first time.
+    center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
+    var: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
+    """
     def __init__(self, img_num, cluster_num, diagnosis, file_path):
         self.img_num = img_num
         self.cluster_num = cluster_num
@@ -46,6 +62,15 @@ class Cluster:
 
 
 class Image:
+    """
+    Represents the points of an image.
+
+    Attributes
+    ==========
+
+    img_num: int >=1, the id of the image.
+    clusters: dict, maps ids of clusters of this image to the cluster.
+    """
     def __init__(self, img_num):
         self.img_num = img_num
         self.clusters = {}
@@ -69,6 +94,20 @@ class Image:
 
 
 class ClusterDB:
+    """
+    Represents all the data.
+
+    Examples
+    ========
+
+    cdb = ClusterDB(CONFIG.db_path, CONFIG.metadata_path)
+    for img in cdb.images:
+        ...
+    for cluster in cdb.clusters:
+        ...
+    img1 = cdb[1]
+    cluster1_2 = cdb[1, 2]
+    """
     def __init__(self, db_path, metadata_path):
         self._db_path = db_path
         self._images = {}
@@ -84,6 +123,14 @@ class ClusterDB:
         if isinstance(item, tuple):
             return self._clusters[item]
         raise KeyError(item)
+
+    @property
+    def images(self):
+        return self._images.values()
+
+    @property
+    def clusters(self):
+        return self._clusters.values()
 
     def _load_metadata(self, metadata_path):
         df = pd.read_csv(metadata_path, header=None,

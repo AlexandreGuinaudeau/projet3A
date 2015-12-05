@@ -46,15 +46,16 @@ class Cluster:
 
     @property
     def center(self):
-        return self.df.mean()
+        return self.df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
+                        'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].mean()
 
     @property
     def variances(self):
-        return self.df.var()
+        return self.df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
+                        'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].var()
 
     def _load_df(self):
-        self._df = pd.read_csv(self.file_path)[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                                                'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']]
+        self._df = pd.read_csv(self.file_path)
 
     def save(self):
         # TODO (Pierre): code

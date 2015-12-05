@@ -25,9 +25,6 @@ class ClusterDBTest(unittest.TestCase):
             # Lazy load
             print(c12.df)
         c11 = self.db[(1, 1)]
-        print(c11)
-        print(c11.center)
-        print(c11.df)
         self.assertEqual(16, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()

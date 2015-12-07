@@ -131,7 +131,7 @@ class ClusterDB:
 
     def _load_metadata(self, metadata_path):
         df = pd.read_csv(metadata_path, header=None,
-                         names=['img_num', 'cluster_num', 'diagnosis', 'file_name'])
+                         names=['img_num', 'diagnosis', 'cluster_num', 'file_name'])
         for index, row in df.iterrows():
             img_num, diagnosis, cluster_num, file_name = row
             file_path = os.path.join(self._db_path, file_name)

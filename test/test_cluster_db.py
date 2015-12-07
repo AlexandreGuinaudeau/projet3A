@@ -1,12 +1,11 @@
 import unittest
 import os
 import pandas as pd
-from database.cluster_db import Cluster, Image, ClusterDB
+from database.cluster_db import Cluster, ClusterDB
 
 db_path = os.path.realpath(os.path.join(__name__, "..", "test_db"))
 metadata_path = os.path.join(db_path, "test_metadata.csv")
 center_path = os.path.join(db_path, "test_centers.csv")
-is_normed_path = os.path.join(db_path, "test.is_normed")
 
 
 class ClusterDBTest(unittest.TestCase):
@@ -15,8 +14,8 @@ class ClusterDBTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = ClusterDB(db_path, metadata_path)
-        cls.db_centers = ClusterDB(db_path, metadata_path, center_path)
+        cls.db = ClusterDB(db_path, metadata_path, "", "", False)
+        cls.db_centers = ClusterDB(db_path, metadata_path, center_path, "", False)
 
     def test_init(self):
         self.assertTrue(True)
@@ -47,7 +46,6 @@ class ClusterDBTest(unittest.TestCase):
         self.assertEqual(7, self.db.nb_clusters)
         for cluster in self.db:
             self.assertTrue(isinstance(cluster, Cluster), cluster)
-        self.db.filter(diagnosis=4)
-        self.assertEqual(2, self.db.nb_clusters)
-        self.db.unfilter()
+        filtered = self.db.filter(diagnosis=4)
+        self.assertEqual(2, len(filtered))
         self.assertEqual(7, self.db.nb_clusters)

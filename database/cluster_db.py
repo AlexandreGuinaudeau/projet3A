@@ -20,7 +20,7 @@ class Cluster:
     center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
     variances: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
     """
-    def __init__(self, img_num, diagnosis, cluster_num, file_path, center=None, variances=None):
+    def __init__(self, img_num, diagnosis, cluster_num, file_path, center=None, variances=None, normed=None):
         self.img_num = img_num
         self.diagnosis = diagnosis
         self.cluster_num = cluster_num
@@ -28,7 +28,7 @@ class Cluster:
         self._df = None
         self._center = center
         self._variances = variances
-        self._normed = os.path.isfile(CONFIG.is_normed_path)
+        self._normed = normed if normed is not None else os.path.isfile(CONFIG.is_normed_path)
 
     def __str__(self):
         return "<Cluster (%i, %i, %i)>" % (self.img_num, self.diagnosis, self.cluster_num)
@@ -88,7 +88,7 @@ class ClusterDB:
     cdb.unfilter()               # Undo all previous filters.
     cluster1_4_2 = cdb[1, 4, 2]  # Access a given cluster.
     """
-    def __init__(self, db_path=None, metadata_path=None, center_path=None, variances_path=None):
+    def __init__(self, db_path=None, metadata_path=None, center_path=None, variances_path=None, normed=None):
         # Set default paths
         self._db_path = db_path if db_path is not None else CONFIG.db_path
         if center_path is None:
@@ -97,17 +97,17 @@ class ClusterDB:
             variances_path = CONFIG.variances_path
         if metadata_path is None:
             metadata_path = CONFIG.metadata_path
+        self._normed = normed
 
         # Initialize
         self._clusters = {}
-        self._clusters_backup = {}
         self.centers = pd.read_csv(center_path) if os.path.isfile(center_path) else None
         self.variances = pd.read_csv(variances_path) if os.path.isfile(variances_path) else None
         self._load_metadata(metadata_path)
 
     def __str__(self):
         info = "<ClusterDB: %i Clusters>\n" % self.nb_clusters
-        for key in self.sorted_clusters:
+        for key in self.sorted_cluster_keys:
             info += "\t" + str(key) + "\n"
         info += "</ClusterDB>"
         return info
@@ -115,7 +115,7 @@ class ClusterDB:
     def __getitem__(self, item):
         if isinstance(item, tuple) and item in self._clusters.keys():
             return self._clusters[item]
-        return self._clusters[self.sorted_clusters.__getitem__(item)]
+        return self._clusters[self.sorted_cluster_keys.__getitem__(item)]
 
     @property
     def nb_clusters(self):
@@ -126,7 +126,7 @@ class ClusterDB:
         return self._clusters.values()
 
     @property
-    def sorted_clusters(self):
+    def sorted_cluster_keys(self):
         return sorted(self._clusters.keys())
 
     def _load_metadata(self, metadata_path):
@@ -140,14 +140,17 @@ class ClusterDB:
             if self.centers is not None:
                 center_df = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
                 center_df = center_df[center_df['diagnosis'] == diagnosis].transpose()
+                print(center_df)
+                print(self.centers)
+                print(img_num, diagnosis, cluster_num)
                 center_s = center_df.iloc[:, 0]
             if self.variances is not None:
                 vars_df = self.variances[self.variances['img_num'] == img_num]
                 vars_df = vars_df[vars_df['cluster_num'] == cluster_num][vars_df['diagnosis'] == diagnosis].transpose()
                 variances_s = vars_df.iloc[:, 0]
             self._clusters[(img_num, diagnosis, cluster_num)] = \
-                Cluster(img_num, diagnosis, cluster_num, file_path, center=center_s, variances=variances_s)
-        self._clusters_backup = self._clusters.copy()
+                Cluster(img_num, diagnosis, cluster_num, file_path, center=center_s, variances=variances_s,
+                        normed=self._normed)
 
     def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
         """
@@ -159,22 +162,25 @@ class ClusterDB:
         img_nums: int or array, images to keep in database
         diagnosis: int or array, diagnosis to keep in database
         cluster_nums: int or array, clusters to keep in database
+
+        Returns
+        =======
+        The dictionary of the filtered clusters {(img_num, diagnosis, cluster_num) => Cluster, ...}
         """
+        filtered_clusters = self._clusters.copy()
         if isinstance(img_nums, int):
             img_nums = [img_nums]
         if isinstance(diagnosis, int):
             diagnosis = [diagnosis]
         if isinstance(cluster_nums, int):
             cluster_nums = [cluster_nums]
-        for (i, d, c) in set(self._clusters.keys()):
+        for (i, d, c) in set(filtered_clusters.keys()):
             if img_nums is not None and i not in img_nums:
-                self._clusters.pop((i, d, c))
+                filtered_clusters.pop((i, d, c))
                 continue
             if diagnosis is not None and d not in diagnosis:
-                self._clusters.pop((i, d, c))
+                filtered_clusters.pop((i, d, c))
                 continue
             if cluster_nums is not None and c not in cluster_nums:
-                self._clusters.pop((i, d, c))
-
-    def unfilter(self):
-        self._clusters = self._clusters_backup.copy()
+                filtered_clusters.pop((i, d, c))
+        return filtered_clusters

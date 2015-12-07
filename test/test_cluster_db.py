@@ -6,6 +6,7 @@ from database.cluster_db import Cluster, Image, ClusterDB
 db_path = os.path.realpath(os.path.join(__name__, "..", "test_db"))
 metadata_path = os.path.join(db_path, "test_metadata.csv")
 center_path = os.path.join(db_path, "test_centers.csv")
+is_normed_path = os.path.join(db_path, "test.is_normed")
 
 
 class ClusterDBTest(unittest.TestCase):
@@ -43,5 +44,15 @@ class ClusterDBTest(unittest.TestCase):
         self.assertEqual(16, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()
-        self.assertNotEqual(0, c11.variances['M12'])
+        self.assertEqual(0, c11.variances['M12'])
         self.assertTrue(isinstance(c11.df, pd.DataFrame))
+
+    def test_database(self):
+        self.assertEqual(7, self.db.nb_clusters)
+        for cluster in self.db:
+            self.assertTrue(isinstance(cluster, Cluster), cluster)
+        self.db.filter(diagnosis=4)
+        self.assertEqual(2, self.db.nb_clusters)
+
+
+

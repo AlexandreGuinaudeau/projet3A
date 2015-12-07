@@ -11,18 +11,18 @@ class Cluster:
     Attributes
     ==========
 
+    cluster_num: int >=1, an id, unique among the clusters of this image with this diagnosis.
+        There is no hierarchy among clusters of a (image, diagnosis) tuple.
     img_num: int >=1, the number of the image the points come from
-    cluster_num: int >=1, an id, unique among the clusters of this image.
-        There is no hierarchy among clusters of an image.
     diagnosis: 3 or 4, the diagnosis of all the points of the cluster.
     file_path: str, the path to the csv file storing the data of the points from this cluster.
     df: pd.Dataframe, the Mij values of the points. It is loaded when called for the first time.
     center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
     var: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
     """
-    def __init__(self, img_num, cluster_num, diagnosis, file_path, center=None, variances=None):
-        self.img_num = img_num
+    def __init__(self, cluster_num, img_num, diagnosis, file_path, center=None, variances=None):
         self.cluster_num = cluster_num
+        self.img_num = img_num
         self.diagnosis = diagnosis
         self.file_path = file_path
         self._df = None
@@ -31,7 +31,7 @@ class Cluster:
         self._normed = os.path.isfile(CONFIG.is_normed_path)
 
     def __str__(self):
-        return "<Cluster (%i, %i): Diagnosis=%i>" % (self.img_num, self.cluster_num, self.diagnosis)
+        return "<Cluster (%i, %i, %i)>" % (self.img_num, self.diagnosis, self.cluster_num)
 
     @property
     def df(self):
@@ -94,8 +94,8 @@ class Image:
     def nb_clusters(self):
         return len(self.clusters)
 
-    def add_cluster(self, cluster_num, cluster):
-        self.clusters[cluster_num] = cluster
+    def add_cluster(self, diagnosis, cluster_num, cluster):
+        self.clusters[diagnosis, cluster_num] = cluster
 
     def __getitem__(self, item):
         return self.clusters[item]
@@ -130,14 +130,20 @@ class ClusterDB:
         self._load_metadata(metadata_path)
 
     def __str__(self):
-        return "<ClusterDB: %i Images, %i Clusters>" % (len(self._images), len(self._clusters))
+        info = "<ClusterDB: %i Images, %i Clusters>\n" % (len(self._images), len(self._clusters))
+        for key in self.sorted_clusters:
+            info += "\t" + str(key) + "\n"
+        info += "</ClusterDB>"
+        return info
 
     def __getitem__(self, item):
-        if isinstance(item, int):
-            return self._images[item]
-        if isinstance(item, tuple):
+        if isinstance(item, tuple) and item in self._clusters.keys():
             return self._clusters[item]
-        raise KeyError(item)
+        return self._clusters[self.sorted_clusters.__getitem__(item)]
+
+    @property
+    def nb_clusters(self):
+        return len(self._clusters)
 
     @property
     def images(self):
@@ -147,18 +153,53 @@ class ClusterDB:
     def clusters(self):
         return self._clusters.values()
 
+    @property
+    def sorted_clusters(self):
+        return sorted(self._clusters.keys())
+
     def _load_metadata(self, metadata_path):
         df = pd.read_csv(metadata_path, header=None,
                          names=['img_num', 'cluster_num', 'diagnosis', 'file_name'])
         for index, row in df.iterrows():
-            img_num, cluster_num, diagnosis, file_name = row
+            img_num, diagnosis, cluster_num, file_name = row
             file_path = os.path.join(self._db_path, file_name)
             center = None
             if self.centers is not None:
                 center = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
                 center = pd.Series(center[center[diagnosis] == diagnosis])
-            self._clusters[(img_num, cluster_num)] = \
+            self._clusters[(img_num, diagnosis, cluster_num)] = \
                 Cluster(img_num, cluster_num, diagnosis, file_path, center=center)
             if img_num not in self._images.keys():
                 self._images[img_num] = Image(img_num)
-            self._images[img_num].add_cluster(cluster_num, self._clusters[(img_num, cluster_num)])
+            self._images[img_num].add_cluster(diagnosis, cluster_num, self._clusters[(img_num, diagnosis, cluster_num)])
+
+    def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
+        """
+        Selects matching clusters in the database.
+
+        Parameters
+        ==========
+
+        img_nums: int or array, images to keep in database
+        diagnosis: int or array, diagnosis to keep in database
+        cluster_nums: int or array, clusters to keep in database
+        """
+        if isinstance(img_nums, int):
+            img_nums = [img_nums]
+        if isinstance(diagnosis, int):
+            diagnosis = [diagnosis]
+        if isinstance(cluster_nums, int):
+            cluster_nums = [cluster_nums]
+        for (i, d, c) in set(self._clusters.keys()):
+            if img_nums is not None and i not in img_nums:
+                self._clusters.pop((i, d, c))
+                continue
+            if diagnosis is not None and d not in diagnosis:
+                self._clusters.pop((i, d, c))
+                continue
+            if cluster_nums is not None and c not in cluster_nums:
+                self._clusters.pop((i, d, c))
+        if img_nums is not None:
+            for i in set(self._images.keys()):
+                if i not in img_nums:
+                    self._images.pop(i)

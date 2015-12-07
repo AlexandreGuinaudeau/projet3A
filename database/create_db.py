@@ -60,10 +60,10 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
         open(CONFIG.is_normed_path, 'w').close()
     if save_centers:
         with open(CONFIG.center_path, 'w') as in_f:
-            in_f.write("img_num,cluster_num,diagnosis,x,y,"
+            in_f.write("img_num,diagnosis,cluster_num,x,y,"
                        "M11,M12,M13,M14,M21,M22,M23,M24,M31,M32,M33,M34,M41,M42,M43,M44\n")
         with open(CONFIG.variances_path, 'w') as in_f:
-            in_f.write("img_num,cluster_num,diagnosis,x,y,"
+            in_f.write("img_num,diagnosis,cluster_num,x,y,"
                        "M11,M12,M13,M14,M21,M22,M23,M24,M31,M32,M33,M34,M41,M42,M43,M44\n")
     if img_nums is None:
         img_nums = CONFIG.all_samples
@@ -93,25 +93,25 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
                 km.fit(distance_x)
                 df = pd.DataFrame(pd.concat([x.reset_index(), pd.Series(km.labels_)], axis=1))
                 for cluster_num in range(1, k+1):
-                    out_name = "cluster_%i_%i_%i.csv" % (img_num, cluster_num, d)
+                    out_name = "cluster_%i_%i_%i.csv" % (img_num, d, cluster_num)
                     out_path = os.path.join(CONFIG.data_path, out_name)
                     cluster_df = df[df[0] == cluster_num-1][['x', 'y', 'M11', 'M12', 'M13', 'M14',
                                                              'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
                                                              'M41', 'M42', 'M43', 'M44']]
                     cluster_df.to_csv(out_path, index=False)
                     with open(CONFIG.metadata_path, 'a') as in_f:
-                        in_f.write("%i,%i,%i,%s\n" % (img_num, cluster_num, d, out_name))
+                        in_f.write("%i,%i,%i,%s\n" % (img_num, d, cluster_num, out_name))
                     if save_centers:
                         with open(CONFIG.center_path, 'a') as in_f:
                             center = cluster_df.mean()
-                            line = "%i,%i,%i" % (img_num, cluster_num, d)
+                            line = "%i,%i,%i" % (img_num, d, cluster_num)
                             for column in ['x', 'y', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31',
                                            'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']:
                                 line += "," + str(center[column])
                             in_f.write(line + "\n")
                         with open(CONFIG.variances_path, 'a') as in_f:
                             var = cluster_df.var()
-                            line = "%i,%i,%i" % (img_num, cluster_num, d)
+                            line = "%i,%i,%i" % (img_num, d, cluster_num)
                             for column in ['x', 'y', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31',
                                            'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']:
                                 line += "," + str(var[column])

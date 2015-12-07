@@ -140,7 +140,7 @@ class ClusterDB:
                 center = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
                 center = pd.Series(center[center[diagnosis] == diagnosis])
             self._clusters[(img_num, diagnosis, cluster_num)] = \
-                Cluster(img_num, cluster_num, diagnosis, file_path, center=center)
+                Cluster(cluster_num, img_num, diagnosis, file_path, center=center)
         self._clusters_backup = self._clusters.copy()
 
     def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):

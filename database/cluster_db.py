@@ -140,9 +140,6 @@ class ClusterDB:
             if self.centers is not None:
                 center_df = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
                 center_df = center_df[center_df['diagnosis'] == diagnosis].transpose()
-                print(center_df)
-                print(self.centers)
-                print(img_num, diagnosis, cluster_num)
                 center_s = center_df.iloc[:, 0]
             if self.variances is not None:
                 vars_df = self.variances[self.variances['img_num'] == img_num]

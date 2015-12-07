@@ -20,10 +20,10 @@ class Cluster:
     center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
     variances: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
     """
-    def __init__(self, cluster_num, img_num, diagnosis, file_path, center=None, variances=None):
-        self.cluster_num = cluster_num
+    def __init__(self, img_num, diagnosis, cluster_num, file_path, center=None, variances=None):
         self.img_num = img_num
         self.diagnosis = diagnosis
+        self.cluster_num = cluster_num
         self.file_path = file_path
         self._df = None
         self._center = center
@@ -140,7 +140,7 @@ class ClusterDB:
                 center = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
                 center = pd.Series(center[center[diagnosis] == diagnosis])
             self._clusters[(img_num, diagnosis, cluster_num)] = \
-                Cluster(cluster_num, img_num, diagnosis, file_path, center=center)
+                Cluster(img_num, diagnosis, cluster_num, file_path, center=center)
         self._clusters_backup = self._clusters.copy()
 
     def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):

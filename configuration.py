@@ -8,11 +8,14 @@ class _Config:
         self.complete_samples = {4, 7, 10, 16, 17}
         self.all_samples = set(range(1, 18))
 
-        # Get Paths
+        # Database
         self.db_path = os.path.realpath(os.path.join(os.path.realpath(__file__), "..", "database"))
         self.backup_data_path = os.path.join(self.db_path, "backup_data")
         self.data_path = os.path.join(self.db_path, "data")
         self.metadata_path = os.path.join(self.data_path, "metadata.csv")
+        self.center_path = os.path.join(self.data_path, "centers.csv")
+        self.variances_path = os.path.join(self.data_path, "variances.csv")
+        self.is_normed_path = os.path.join(self.data_path, ".is_normed")
 
         self.visualization_path = os.path.join(self.data_path, "visualization")
 

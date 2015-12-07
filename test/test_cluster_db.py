@@ -5,14 +5,17 @@ from database.cluster_db import Cluster, Image, ClusterDB
 
 db_path = os.path.realpath(os.path.join(__name__, "..", "test_db"))
 metadata_path = os.path.join(db_path, "test_metadata.csv")
+center_path = os.path.join(db_path, "test_centers.csv")
 
 
 class ClusterDBTest(unittest.TestCase):
     db = None
+    db_centers = None
 
     @classmethod
     def setUpClass(cls):
         cls.db = ClusterDB(db_path, metadata_path)
+        cls.db_centers = ClusterDB(db_path, metadata_path, center_path)
 
     def test_init(self):
         self.assertTrue(True)
@@ -34,3 +37,11 @@ class ClusterDBTest(unittest.TestCase):
     def test_image(self):
         self.assertTrue(isinstance(self.db[1], Image))
         self.assertEqual(2, self.db[1].nb_clusters)
+
+    def test_centers(self):
+        c11 = self.db_centers[(1, 1)]
+        self.assertEqual(16, len(c11.center))
+        self.assertEqual(0, c11.variances['M12'])
+        c11.norm()
+        self.assertNotEqual(0, c11.variances['M12'])
+        self.assertTrue(isinstance(c11.df, pd.DataFrame))

@@ -22,37 +22,32 @@ class ClusterDBTest(unittest.TestCase):
         self.assertTrue(True)
 
     def test_cluster(self):
-        self.assertTrue(isinstance(self.db[(1, 2)], Cluster))
-        c12 = self.db[(1, 2)]
+        self.assertTrue(isinstance(self.db[(1, 3, 2)], Cluster))
+        c12 = self.db[(1, 3, 2)]
         self.assertTrue(isinstance(c12.img_num, int))
         with self.assertRaises(OSError):
             # Lazy load
             print(c12.df)
-        c11 = self.db[(1, 1)]
+        c11 = self.db[(1, 4, 1)]
         self.assertEqual(16, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()
         self.assertNotEqual(0, c11.variances['M12'])
         self.assertTrue(isinstance(c11.df, pd.DataFrame))
 
-    def test_image(self):
-        self.assertTrue(isinstance(self.db[1], Image))
-        self.assertEqual(2, self.db[1].nb_clusters)
-
     def test_centers(self):
-        c11 = self.db_centers[(1, 1)]
+        c11 = self.db_centers[(1, 4, 1)]
         self.assertEqual(16, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()
-        self.assertEqual(0, c11.variances['M12'])
+        self.assertNotEqual(0, c11.variances['M12'])
         self.assertTrue(isinstance(c11.df, pd.DataFrame))
 
-    def test_database(self):
+    def test_filter_database(self):
         self.assertEqual(7, self.db.nb_clusters)
         for cluster in self.db:
             self.assertTrue(isinstance(cluster, Cluster), cluster)
         self.db.filter(diagnosis=4)
         self.assertEqual(2, self.db.nb_clusters)
-
-
-
+        self.db.unfilter()
+        self.assertEqual(7, self.db.nb_clusters)

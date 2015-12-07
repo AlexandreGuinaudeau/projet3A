@@ -72,12 +72,12 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
     for img_num in img_nums:
         for d in [3, 4]:
             x = concat_df[concat_df['img_num'] == img_num][concat_df['diagnosis'] == d]
-            distance_x = x[['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                            'M41', 'M42', 'M43', 'M44']]
             if norm:
                 for Mij in ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
                             'M41', 'M42', 'M43', 'M44']:
-                    distance_x[Mij] = distance_x['M11']*distance_x[Mij]
+                    x[Mij] = x['M11']*x[Mij]
+            distance_x = x[['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
+                            'M41', 'M42', 'M43', 'M44']]
             if len(distance_x):  # There are pixels in this image with this diagnosis.
                 last = sys.maxsize
                 inertia = sys.maxsize - threshold - 1
@@ -127,4 +127,4 @@ def create_database(img_nums=None, reload=False, threshold=15, norm=False, save_
 
 
 if __name__ == "__main__":
-    create_database()
+    create_database(norm=True)

@@ -18,7 +18,7 @@ class Cluster:
     file_path: str, the path to the csv file storing the data of the points from this cluster.
     df: pd.Dataframe, the Mij values of the points. It is loaded when called for the first time.
     center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
-    var: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
+    variances: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
     """
     def __init__(self, cluster_num, img_num, diagnosis, file_path, center=None, variances=None):
         self.cluster_num = cluster_num
@@ -73,38 +73,6 @@ class Cluster:
         """ Saves the cluster as png. """
 
 
-class Image:
-    """
-    Represents the points of an image.
-
-    Attributes
-    ==========
-
-    img_num: int >=1, the id of the image.
-    clusters: dict, maps ids of clusters of this image to the cluster.
-    """
-    def __init__(self, img_num):
-        self.img_num = img_num
-        self.clusters = {}
-
-    def __str__(self):
-        return "<Image %i: %i clusters>" % (self.img_num, self.nb_clusters)
-
-    @property
-    def nb_clusters(self):
-        return len(self.clusters)
-
-    def add_cluster(self, diagnosis, cluster_num, cluster):
-        self.clusters[diagnosis, cluster_num] = cluster
-
-    def __getitem__(self, item):
-        return self.clusters[item]
-
-    def save(self):
-        # TODO (Pierre): code
-        """ Saves the image (with its clusters) as png. """
-
-
 class ClusterDB:
     """
     Represents all the data.
@@ -114,23 +82,31 @@ class ClusterDB:
     ========
 
     cdb = ClusterDB(CONFIG.db_path, CONFIG.metadata_path)
-    for img in cdb.images:
+    cdb.filter(img_num=1)        # Keep only elements from image 1
+    for cluster in cdb:          # Iterate on clusters form image 1
         ...
-    for cluster in cdb.clusters:
-        ...
-    img1 = cdb[1]
-    cluster1_2 = cdb[1, 2]
+    cdb.unfilter()               # Undo all previous filters.
+    cluster1_4_2 = cdb[1, 4, 2]  # Access a given cluster.
     """
-    def __init__(self, db_path, metadata_path, center_path="", variances_path=""):
-        self._db_path = db_path
-        self._images = {}
+    def __init__(self, db_path=None, metadata_path=None, center_path=None, variances_path=None):
+        # Set default paths
+        self._db_path = db_path if db_path is not None else CONFIG.db_path
+        if center_path is None:
+            center_path = CONFIG.center_path
+        if variances_path is None:
+            variances_path = CONFIG.variances_path
+        if metadata_path is None:
+            metadata_path = CONFIG.metadata_path
+
+        # Initialize
         self._clusters = {}
+        self._clusters_backup = {}
         self.centers = pd.read_csv(center_path) if os.path.isfile(center_path) else None
         self.variances = pd.read_csv(variances_path) if os.path.isfile(variances_path) else None
         self._load_metadata(metadata_path)
 
     def __str__(self):
-        info = "<ClusterDB: %i Images, %i Clusters>\n" % (len(self._images), len(self._clusters))
+        info = "<ClusterDB: %i Clusters>\n" % self.nb_clusters
         for key in self.sorted_clusters:
             info += "\t" + str(key) + "\n"
         info += "</ClusterDB>"
@@ -144,10 +120,6 @@ class ClusterDB:
     @property
     def nb_clusters(self):
         return len(self._clusters)
-
-    @property
-    def images(self):
-        return self._images.values()
 
     @property
     def clusters(self):
@@ -169,9 +141,7 @@ class ClusterDB:
                 center = pd.Series(center[center[diagnosis] == diagnosis])
             self._clusters[(img_num, diagnosis, cluster_num)] = \
                 Cluster(img_num, cluster_num, diagnosis, file_path, center=center)
-            if img_num not in self._images.keys():
-                self._images[img_num] = Image(img_num)
-            self._images[img_num].add_cluster(diagnosis, cluster_num, self._clusters[(img_num, diagnosis, cluster_num)])
+        self._clusters_backup = self._clusters.copy()
 
     def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
         """
@@ -199,7 +169,6 @@ class ClusterDB:
                 continue
             if cluster_nums is not None and c not in cluster_nums:
                 self._clusters.pop((i, d, c))
-        if img_nums is not None:
-            for i in set(self._images.keys()):
-                if i not in img_nums:
-                    self._images.pop(i)
+
+    def unfilter(self):
+        self._clusters = self._clusters_backup.copy()

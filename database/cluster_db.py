@@ -135,12 +135,18 @@ class ClusterDB:
         for index, row in df.iterrows():
             img_num, diagnosis, cluster_num, file_name = row
             file_path = os.path.join(self._db_path, file_name)
-            center = None
+            center_s = None
+            variances_s = None
             if self.centers is not None:
-                center = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
-                center = pd.Series(center[center[diagnosis] == diagnosis])
+                center_df = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
+                center_df = center_df[center_df['diagnosis'] == diagnosis].transpose()
+                center_s = center_df.iloc[:, 0]
+            if self.variances is not None:
+                vars_df = self.variances[self.variances['img_num'] == img_num]
+                vars_df = vars_df[vars_df['cluster_num'] == cluster_num][vars_df['diagnosis'] == diagnosis].transpose()
+                variances_s = vars_df.iloc[:, 0]
             self._clusters[(img_num, diagnosis, cluster_num)] = \
-                Cluster(img_num, diagnosis, cluster_num, file_path, center=center)
+                Cluster(img_num, diagnosis, cluster_num, file_path, center=center_s, variances=variances_s)
         self._clusters_backup = self._clusters.copy()
 
     def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):

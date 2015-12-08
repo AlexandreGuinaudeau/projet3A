@@ -20,6 +20,7 @@ class Cluster:
     center: pd.Series, the Mij values of the center of the cluster (mean value of each Mij)
     variances: pd.Series, for each Mij, the variance of the points of the cluster along this axis.
     """
+
     def __init__(self, img_num, diagnosis, cluster_num, file_path, center=None, variances=None, normed=None):
         self.img_num = img_num
         self.diagnosis = diagnosis
@@ -45,7 +46,7 @@ class Cluster:
         self._normed = True
         for Mij in ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
                     'M41', 'M42', 'M43', 'M44']:
-            self._df[Mij] = self._df['M11']*self._df[Mij]
+            self._df[Mij] = self._df['M11'] * self._df[Mij]
         self._center = self._df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
                                  'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].mean()
         self._variances = self._df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
@@ -88,6 +89,7 @@ class ClusterDB:
     cdb.unfilter()               # Undo all previous filters.
     cluster1_4_2 = cdb[1, 4, 2]  # Access a given cluster.
     """
+
     def __init__(self, db_path=None, metadata_path=None, center_path=None, variances_path=None, normed=None):
         # Set default paths
         self._db_path = db_path if db_path is not None else CONFIG.db_path
@@ -181,3 +183,33 @@ class ClusterDB:
             if cluster_nums is not None and c not in cluster_nums:
                 filtered_clusters.pop((i, d, c))
         return filtered_clusters
+
+
+if __name__ == "__main__":
+    cdb = ClusterDB()
+    import numpy as np
+    from numpy.linalg import svd
+
+    U, S, V = svd(cdb.centers[['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
+                               'M41', 'M42', 'M43', 'M44']].transpose())
+    print("U", U)
+    print("S", S)
+    from matplotlib import pyplot as plt
+
+    # plt.figure(1)
+    # plt.plot(S)
+    #
+    # plt.figure(2)
+    # plt.plot(U[:3].transpose())
+
+    fig, ax = plt.subplots()
+    print(len(U[0]))
+    p = 3
+    ind = np.arange(15)
+    width = 0.7/p
+    for i in range(p):
+        ax.bar(ind+i*width, U[i], width, color=str(i/p))
+    ax.set_xticks(ind + 0.35)
+    ax.set_xticklabels(('M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
+                        'M41', 'M42', 'M43', 'M44'))
+    plt.show()

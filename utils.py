@@ -20,3 +20,16 @@ def add_suffix_to_files(dir_path, suffix):
 def prepare_sample_dir(sample_dir_path):
     add_suffix_to_files(os.path.join(sample_dir_path, "csv"), ".csv")
     os.mkdir(os.path.join(sample_dir_path, "images"))
+
+
+def get_kwargs(**kwargs):
+    kwargs = dict(kwargs)
+    for key, value in kwargs.copy().items():
+        if value is None:
+            kwargs.pop(key)
+            continue
+        try:
+            iter(value)
+        except TypeError:
+            kwargs[key] = [value]
+    return kwargs

@@ -1,4 +1,5 @@
 import os
+import random
 import pandas as pd
 from configuration import CONFIG
 
@@ -151,7 +152,7 @@ class ClusterDB:
                 Cluster(img_num, diagnosis, cluster_num, file_path, center=center_s, variances=variances_s,
                         normed=self._normed)
 
-    def filter(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
+    def filter_clusters(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
         """
         Selects matching clusters in the database.
 
@@ -164,7 +165,7 @@ class ClusterDB:
 
         Returns
         =======
-        The dictionary of the filtered clusters {(img_num, diagnosis, cluster_num) => Cluster, ...}
+        clusters: The dictionary of the filtered clusters {(img_num, diagnosis, cluster_num) => Cluster, ...}
         """
         filtered_clusters = self._clusters.copy()
         if isinstance(img_nums, int):
@@ -184,32 +185,58 @@ class ClusterDB:
                 filtered_clusters.pop((i, d, c))
         return filtered_clusters
 
+    def filter(self, rebalance=False, seed=None, *, img_nums=None, diagnosis=None, cluster_nums=None, columns=None):
+        """
+        Selects matching clusters in the database.
 
-if __name__ == "__main__":
-    cdb = ClusterDB()
-    import numpy as np
-    from numpy.linalg import svd
+        Parameters
+        ==========
 
-    U, S, V = svd(cdb.centers[['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                               'M41', 'M42', 'M43', 'M44']].transpose())
-    print("U", U)
-    print("S", S)
-    from matplotlib import pyplot as plt
+        rebalance: bool, guarantees to have the same number of each diagnosis after filtering
+        seed: int, sets the random number to rebalance the results
+        img_nums: int or array, images to keep
+        diagnosis: int or array, diagnosis to keep
+        cluster_nums: int or array, clusters to keep
+        columns: str or list of str, columns to keep
 
-    # plt.figure(1)
-    # plt.plot(S)
-    #
-    # plt.figure(2)
-    # plt.plot(U[:3].transpose())
+        Returns
+        =======
+        centers: The Dataframe of the centers matching the filter criteria
+        """
+        centers = self.centers.copy()
+        if isinstance(img_nums, int):
+            img_nums = [img_nums]
+        if isinstance(diagnosis, int):
+            diagnosis = [diagnosis]
+        if isinstance(cluster_nums, int):
+            cluster_nums = [cluster_nums]
+        if isinstance(columns, str):
+            columns = [columns]
+        if img_nums is not None:
+            centers = centers[centers.img_num.isin(img_nums)]
+        if diagnosis is not None:
+            centers = centers[centers.diagnosis.isin(diagnosis)]
+        if cluster_nums is not None:
+            centers = centers[centers.cluster_nums.isin(cluster_nums)]
+        if columns is not None:
+            centers = centers[columns]
+        if rebalance:
+            random.seed(seed)
+            centers_3 = centers[centers['diagnosis'] == 3]
+            centers_4 = centers[centers['diagnosis'] == 4]
+            if not (len(centers_3) and len(centers_4)):
+                centers.drop(centers.index)
+            if len(centers_3) < len(centers_4):
+                idx = list(centers_4.index)
+                random.shuffle(idx)
+                centers.drop(idx[len(centers_3):], inplace=True)
+            if len(centers_3) > len(centers_4):
+                idx = list(centers_3.index)
+                random.shuffle(idx)
+                centers.drop(idx[len(centers_4):], inplace=True)
+        if len(centers):
+            return centers
+        else:
+            return None  # No center matches the filter.
 
-    fig, ax = plt.subplots()
-    print(len(U[0]))
-    p = 3
-    ind = np.arange(15)
-    width = 0.7/p
-    for i in range(p):
-        ax.bar(ind+i*width, U[i], width, color=str(i/p))
-    ax.set_xticks(ind + 0.35)
-    ax.set_xticklabels(('M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                        'M41', 'M42', 'M43', 'M44'))
-    plt.show()
+

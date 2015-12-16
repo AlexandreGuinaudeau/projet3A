@@ -36,16 +36,21 @@ class ClusterDBTest(unittest.TestCase):
 
     def test_centers(self):
         c11 = self.db_centers[(1, 4, 1)]
-        self.assertEqual(16, len(c11.center))
+        self.assertEqual(21, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()
         self.assertNotEqual(0, c11.variances['M12'])
         self.assertTrue(isinstance(c11.df, pd.DataFrame))
 
     def test_filter_database(self):
-        self.assertEqual(7, self.db.nb_clusters)
-        for cluster in self.db:
+        self.assertEqual(7, self.db_centers.nb_clusters)
+        for cluster in self.db_centers:
             self.assertTrue(isinstance(cluster, Cluster), cluster)
-        filtered = self.db.filter(diagnosis=4)
+        filtered = self.db_centers.filter(diagnosis=4)
         self.assertEqual(2, len(filtered))
-        self.assertEqual(7, self.db.nb_clusters)
+        self.assertEqual(7, self.db_centers.nb_clusters)
+
+    def test_rebalance(self):
+        filtered = self.db_centers.filter(rebalance=True, seed=0)
+        self.assertEqual(4, len(filtered))
+        self.assertEqual([1, 2, 3, 6], list(filtered.index))

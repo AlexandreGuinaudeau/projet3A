@@ -2,19 +2,19 @@ import unittest
 import random
 from database import ClusterDB
 from configuration import CONFIG
-from svm import SVM
+from knn import Knn
 
 
 class SVMTest(unittest.TestCase):
     cdb = None
-    svm = None
+    knn = None
 
     @classmethod
     def setUpClass(cls):
         cls.cdb = ClusterDB()
-        cls.svm = SVM(cls.cdb)
+        cls.knn = Knn(cls.cdb, n_neighbors=4, weights='uniform')
 
-    def test_cross_validation(self, test_size=2, normalize=True, rebalance=True, seed=None):
+    def test_cross_validation(self, test_size=1, normalize=True, rebalance=True, seed=None):
         cum_score = []
         cum_sum = 0
         samples = list(CONFIG.all_samples)
@@ -23,7 +23,7 @@ class SVMTest(unittest.TestCase):
         for i in range(int(len(samples)/test_size)):
             img_nums = samples[i*test_size:(i+1)*test_size]
             weight = len(self.cdb.filter(img_nums=img_nums))
-            score = self.svm.cross_validate(img_nums,
+            score = self.knn.cross_validate(img_nums,
                                             columns=CONFIG.relevant_columns,
                                             normalize=normalize,
                                             rebalance=rebalance,

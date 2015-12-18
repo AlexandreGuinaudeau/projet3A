@@ -41,13 +41,13 @@ class VisualizationTest(unittest.TestCase):
         # plt.plot(np.sqrt([sum(np.square(c[i])) for i in c.columns]))
         # plt.show()
         outliers = [i for i in c.columns if np.sqrt(sum(np.square(c[i]))) > 0.4]
-        self.assertEqual([27, 35, 37, 47], outliers)
+        self.assertEqual([22, 35], outliers)
 
     def test_svd(self, without_outliers=True):
-        outliers = [27, 35, 37, 47]
+        outliers = [22, 35]
         base_names = ["eigenvalues", "eigenvectors", "dots"]
         if without_outliers:
-            centers = self.cdb.centers.loc[set(range(59)).difference(outliers), :]
+            centers = self.cdb.centers.loc[set(range(len(self.cdb.centers))).difference(outliers), :]
             out_names = [base+"_without_outliers.png" for base in base_names]
         else:
             centers = self.cdb.centers
@@ -92,3 +92,6 @@ class VisualizationTest(unittest.TestCase):
 
         plt.savefig(out_paths[2])
         self.assertEqual(nb_files + 3, len(os.listdir(os.path.join(CONFIG.visualization_path, "SVD"))))
+
+    def test_var(self):
+        print(self.cdb.variances)

@@ -20,12 +20,11 @@ class _Config:
         self.is_normed_path = os.path.join(self.data_path, ".is_normed")
 
         # Columns
-        # Columns to keep in database
-        self.database_columns = ['img_num', 'x', 'y', 'diagnosis', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23',
-                                 'M24', 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
         # Columns to apply machine learning algorithms on (= Relevant columns)
         self.learning_columns = ['M23', 'M24', 'M32', 'M34', 'M42', 'M43']
         self.relevant_columns = ['img_num', 'diagnosis', 'cluster_num'] + self.learning_columns
+        self.cluster_columns = self.learning_columns + ['x', 'y', 'M11']
+        self.all_columns = self.relevant_columns + ['x', 'y', 'M11']
         # ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
 
         # See http://matplotlib.org/examples/color/colormaps_reference.html

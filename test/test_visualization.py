@@ -92,6 +92,3 @@ class VisualizationTest(unittest.TestCase):
 
         plt.savefig(out_paths[2])
         self.assertEqual(nb_files + 3, len(os.listdir(os.path.join(CONFIG.visualization_path, "SVD"))))
-
-    def test_var(self):
-        print(self.cdb.variances)

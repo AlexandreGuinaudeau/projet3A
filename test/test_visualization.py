@@ -33,7 +33,7 @@ class VisualizationTest(unittest.TestCase):
             self.v.mij_histogram(i, j, out_path=os.path.join(histogram_dir, 'M%i%i.png' % (i, j)))
         self.assertEqual(len(couples), len(os.listdir(histogram_dir)))
 
-    def test_outliers(self):
+    def test_svd(self, without_outliers=True):
         c = self.cdb.centers[CONFIG.learning_columns]
         mean_s = c.mean()
         c = c.transpose().apply(lambda s: s - mean_s)
@@ -41,10 +41,8 @@ class VisualizationTest(unittest.TestCase):
         # plt.plot(np.sqrt([sum(np.square(c[i])) for i in c.columns]))
         # plt.show()
         outliers = [i for i in c.columns if np.sqrt(sum(np.square(c[i]))) > 0.4]
-        self.assertEqual([22, 35], outliers)
-
-    def test_svd(self, without_outliers=True):
-        outliers = [22, 35]
+        self.assertGreaterEqual(4, len(outliers))
+        self.assertGreaterEqual(len(outliers), 2)
         base_names = ["eigenvalues", "eigenvectors", "dots"]
         if without_outliers:
             centers = self.cdb.centers.loc[set(range(len(self.cdb.centers))).difference(outliers), :]

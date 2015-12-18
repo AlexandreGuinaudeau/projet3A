@@ -23,8 +23,7 @@ def load_df(reload=False):
         xy_df = pd.read_csv(xy_path, header=None)
         npos_df = pd.read_csv(npos_path, header=None)
         concat_df = pd.concat([npos_df, xy_df, pix_tup_df], axis=1)
-        concat_df.columns = ['img_num', 'x', 'y', 'diagnosis', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                             'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
+        concat_df.columns = CONFIG.database_columns
         concat_df.to_csv(temp_path, index=False)
     else:
         concat_df = pd.read_csv(temp_path)
@@ -51,7 +50,7 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
     ==========
     concat_df: pd.Dataframe, the concatenation of raw data.
     img_nums: array-like or int, images to create in the database. Default: all images
-    threshold: number, the maximum sum of distances between elements of clusters and their center.
+    threshold: number, ratio between the last clustering and the following one
     norm: boolean, whether columns should be normed before clustering
     save_centers: boolean, whether to save the centers and variances of the clusters in a file to retrieve them faster.
     """
@@ -60,11 +59,9 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
         open(CONFIG.is_normed_path, 'w').close()
     if save_centers:
         with open(CONFIG.center_path, 'w') as in_f:
-            in_f.write("img_num,diagnosis,cluster_num,x,y,"
-                       "M11,M12,M13,M14,M21,M22,M23,M24,M31,M32,M33,M34,M41,M42,M43,M44\n")
+            in_f.write(",".join(CONFIG.all_columns)+"\n")
         with open(CONFIG.variances_path, 'w') as in_f:
-            in_f.write("img_num,diagnosis,cluster_num,x,y,"
-                       "M11,M12,M13,M14,M21,M22,M23,M24,M31,M32,M33,M34,M41,M42,M43,M44\n")
+            in_f.write(",".join(CONFIG.all_columns)+"\n")
     if img_nums is None:
         img_nums = CONFIG.all_samples
     elif isinstance(img_nums, int):
@@ -73,16 +70,14 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
         for d in [3, 4]:
             x = concat_df[concat_df['img_num'] == img_num][concat_df['diagnosis'] == d]
             if norm:
-                for Mij in ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                            'M41', 'M42', 'M43', 'M44']:
+                for Mij in CONFIG.learning_columns:
                     x[Mij] = x['M11']*x[Mij]
-            distance_x = x[['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                            'M41', 'M42', 'M43', 'M44']]
+            distance_x = x[CONFIG.learning_columns]
             if len(distance_x):  # There are pixels in this image with this diagnosis.
                 last = sys.maxsize
-                inertia = sys.maxsize - threshold - 1
+                inertia = sys.maxsize/2
                 k = 0
-                while last - inertia >= threshold:
+                while last - inertia >= last/threshold:
                     k += 1
                     last = inertia
                     km = KMeans(k)
@@ -95,9 +90,7 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
                 for cluster_num in range(1, k+1):
                     out_name = "cluster_%i_%i_%i.csv" % (img_num, d, cluster_num)
                     out_path = os.path.join(CONFIG.data_path, out_name)
-                    cluster_df = df[df[0] == cluster_num-1][['x', 'y', 'M11', 'M12', 'M13', 'M14',
-                                                             'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                                                             'M41', 'M42', 'M43', 'M44']]
+                    cluster_df = df[df[0] == cluster_num-1]
                     cluster_df.to_csv(out_path, index=False)
                     with open(CONFIG.metadata_path, 'a') as in_f:
                         in_f.write("%i,%i,%i,%s\n" % (img_num, d, cluster_num, out_name))
@@ -105,21 +98,19 @@ def update_clusters(concat_df, img_nums, threshold, norm, save_centers):
                         with open(CONFIG.center_path, 'a') as in_f:
                             center = cluster_df.mean()
                             line = "%i,%i,%i" % (img_num, d, cluster_num)
-                            for column in ['x', 'y', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31',
-                                           'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']:
+                            for column in CONFIG.cluster_columns:
                                 line += "," + str(center[column])
                             in_f.write(line + "\n")
                         with open(CONFIG.variances_path, 'a') as in_f:
                             var = cluster_df.var()
                             line = "%i,%i,%i" % (img_num, d, cluster_num)
-                            for column in ['x', 'y', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31',
-                                           'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']:
+                            for column in CONFIG.cluster_columns:
                                 line += "," + str(var[column])
                             in_f.write(line + "\n")
         print("Created all clusters for image %i." % img_num)
 
 
-def create_database(img_nums=None, reload=False, threshold=15, norm=False, save_centers=True):
+def create_database(img_nums=None, reload=False, threshold=4, norm=False, save_centers=True):
     df = load_df(reload=reload)
     start = time.time()
     update_clusters(df, img_nums=img_nums, threshold=threshold, norm=norm, save_centers=save_centers)

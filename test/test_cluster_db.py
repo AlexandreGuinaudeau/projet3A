@@ -1,12 +1,11 @@
 import unittest
 import os
 import pandas as pd
-from database.cluster_db import Cluster, Image, ClusterDB
+from database.cluster_db import Cluster, ClusterDB
 
 db_path = os.path.realpath(os.path.join(__name__, "..", "test_db"))
 metadata_path = os.path.join(db_path, "test_metadata.csv")
 center_path = os.path.join(db_path, "test_centers.csv")
-is_normed_path = os.path.join(db_path, "test.is_normed")
 
 
 class ClusterDBTest(unittest.TestCase):
@@ -15,8 +14,8 @@ class ClusterDBTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = ClusterDB(db_path, metadata_path)
-        cls.db_centers = ClusterDB(db_path, metadata_path, center_path)
+        cls.db = ClusterDB(db_path, metadata_path, "", "", False)
+        cls.db_centers = ClusterDB(db_path, metadata_path, center_path, "", False)
 
     def test_init(self):
         self.assertTrue(True)
@@ -37,17 +36,21 @@ class ClusterDBTest(unittest.TestCase):
 
     def test_centers(self):
         c11 = self.db_centers[(1, 4, 1)]
-        self.assertEqual(16, len(c11.center))
+        self.assertEqual(21, len(c11.center))
         self.assertEqual(0, c11.variances['M12'])
         c11.norm()
         self.assertNotEqual(0, c11.variances['M12'])
         self.assertTrue(isinstance(c11.df, pd.DataFrame))
 
     def test_filter_database(self):
-        self.assertEqual(7, self.db.nb_clusters)
-        for cluster in self.db:
+        self.assertEqual(7, self.db_centers.nb_clusters)
+        for cluster in self.db_centers:
             self.assertTrue(isinstance(cluster, Cluster), cluster)
-        self.db.filter(diagnosis=4)
-        self.assertEqual(2, self.db.nb_clusters)
-        self.db.unfilter()
-        self.assertEqual(7, self.db.nb_clusters)
+        filtered = self.db_centers.filter(diagnosis=4)
+        self.assertEqual(2, len(filtered))
+        self.assertEqual(7, self.db_centers.nb_clusters)
+
+    def test_rebalance(self):
+        filtered = self.db_centers.filter(rebalance=True, seed=0)
+        self.assertEqual(4, len(filtered))
+        self.assertEqual([1, 2, 3, 6], list(filtered.index))

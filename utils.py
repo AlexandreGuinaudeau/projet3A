@@ -49,4 +49,7 @@ def get_train_test_data(cdb, img_nums=None, columns=None, normalize=False, rebal
         data_test = data_test.apply(lambda s: s/np.sqrt(data_train.var()), axis=1)
     targets_test = test_centers['diagnosis']
 
+    data_train = data_train[CONFIG.learning_columns]
+    data_test = data_test[CONFIG.learning_columns]
+
     return data_train, targets_train, data_test, targets_test

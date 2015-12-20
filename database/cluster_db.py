@@ -70,9 +70,25 @@ class Cluster:
     def _load_df(self):
         self._df = pd.read_csv(self.file_path)
 
-    def save(self):
-        # TODO (Pierre): code
-        """ Saves the cluster as png. """
+    def apply_cluster(self, array, nb_clusters):
+        #array : output, red=Ill, green=Safe
+        df=self._df[["x"]["y"]]
+        if self.diagnosis == 3:
+            for index, row in df.iterrows():
+                x, y = row
+                array[x, y] = (0,int(255*(self.cluster_num+5)/(nb_clusters+5)),0)
+        elif self.diagnosis == 4:
+            for index, row in df.iterrows():
+                x, y = row
+                array[x, y] = (int(255*(self.cluster_num+5)/(nb_clusters+5)),0,0)
+
+    def save(self, out_path):
+        height = 422
+        width = 560
+        array = np.zeros((height, width, 3), 'uint8')
+        array = self.apply_cluster(array, 1)
+        img = Image.fromarray(array)
+        img.save(out_path)
 
 
 class ClusterDB:
@@ -240,3 +256,15 @@ class ClusterDB:
             return None  # No center matches the filter.
 
 
+    def save(self, out_path, *, img_nums=None, diagnosis=None, cluster_nums=None):
+        arrays = {}
+        height = 422
+        width = 560
+        temp_df = filter(img_nums, diagnosis, cluster_nums)
+        for (i, d, c) in set(temp_df.keys()):
+            if i not in arrays.keys():
+                arrays[i] = np.zeros((height, width, 3), 'uint8')
+            arrays[i] = temp_df[i,d,c].apply_cluster(temp_df[i,d,c], arrays[i], max(self.centers['cluster_num']))
+        for i, array in arrays.items():
+            img = Image.fromarray(array)
+            img.save(out_path+str(i))

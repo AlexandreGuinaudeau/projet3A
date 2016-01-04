@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import pandas as pd
+import numpy as np
 from sklearn.cluster import KMeans
 
 from configuration import CONFIG
@@ -23,7 +24,8 @@ def load_df(reload=False):
         xy_df = pd.read_csv(xy_path, header=None)
         npos_df = pd.read_csv(npos_path, header=None)
         concat_df = pd.concat([npos_df, xy_df, pix_tup_df], axis=1)
-        concat_df.columns = CONFIG.database_columns
+        print(np.shape(concat_df))
+        concat_df.columns = CONFIG.all_temp_columns
         concat_df.to_csv(temp_path, index=False)
     else:
         concat_df = pd.read_csv(temp_path)

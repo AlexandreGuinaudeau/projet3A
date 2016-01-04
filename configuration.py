@@ -23,8 +23,9 @@ class _Config:
         # Columns to apply machine learning algorithms on (= Relevant columns)
         self.learning_columns = ['M23', 'M24', 'M32', 'M34', 'M42', 'M43']
         self.database_columns = ['M22', 'M23', 'M24', 'M32', 'M33', 'M34', 'M42', 'M43', 'M44']
-        # ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
-
+        self.muller_col = ['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
+        self.pca_col = ['M22', 'M23', 'M24', 'M32', 'M33', 'M34', 'M42', 'M43', 'M44']
+        self.all_temp_columns = ['img_num', 'x', 'y', 'diagnosis', 'M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']
         # See http://matplotlib.org/examples/color/colormaps_reference.html
         self.colormap = cm.gist_rainbow  # gist_rainbow, jet, rainbow, gist_earth...
 

@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(level=CONFIG.logging_level)
 
 
-def save_new_pixtup_in_database(pixtup_file_name, xy_file_name=None, img_num=None):
+def save_pixtup_in_database(pixtup_file_name=None, xy_file_name=None, img_num=None):
     """
-    Add a new image to database.
+    Add a new image to database (or create database).
     - You can give one file with the following columns (in this order):
     [x, y, M11, M12, M13, M14, M21, M22, M23, M24, M31, M32, M33, M34, M41, M42, M43, M44]
     - You can also create two separate files for pixtup and xy, with the following columns (in this order):
@@ -39,7 +39,8 @@ def save_new_pixtup_in_database(pixtup_file_name, xy_file_name=None, img_num=Non
 
     Parameters
     ==========
-    pixtup_file_name: The name of the pixtup file to append to the existing PixTup.csv
+    pixtup_file_name: The name of the pixtup file to append to the existing PixTup.csv.
+        None to create the current database
     xy_file_name: The name of the new xy file, if the pixtup and xy files are separated.
     img_num: The number of the new image. If None, it will assign the first number not assigned yet.
 
@@ -48,54 +49,59 @@ def save_new_pixtup_in_database(pixtup_file_name, xy_file_name=None, img_num=Non
     Returns True if the new files were successfully added, False otherwise.
     Raises an error if the dimensions of the csv files don't match the existing ones.
     """
-    in_path = os.path.join(CONFIG.raw_data_path, pixtup_file_name)
-    if not os.path.isfile(in_path):
-        logger.error("No file %s was found in raw_data/ folder.")
-        raise FileNotFoundError(in_path)
-    new_pixtup_df = pd.read_csv(in_path, sep=",", header=None)
-    if xy_file_name is None:
-        new_xy_df = new_pixtup_df.iloc[:, :2]
-        new_pixtup_df = new_pixtup_df.iloc[:, 2:19]
-    else:
-        new_pixtup_df = new_pixtup_df.iloc[:, 0:17]
-        new_xy_path = os.path.join(CONFIG.raw_data_path, xy_file_name)
+    if pixtup_file_name is not None:
+        in_path = os.path.join(CONFIG.raw_data_path, pixtup_file_name)
         if not os.path.isfile(in_path):
             logger.error("No file %s was found in raw_data/ folder.")
-            raise FileNotFoundError(new_xy_path)
-        new_xy_df = pd.read_csv(new_xy_path, sep=",", header=None)
-    old_pixtup_df = pd.read_csv(CONFIG.raw_pixtup_path, header=None).iloc[:, 0:17]
-    old_xy_df = pd.read_csv(CONFIG.raw_xy_path, header=None)
-    logger.warning("You are about to concatenate the following Dataframes:\n %s \n and \n %s"
-                   % (str(old_pixtup_df.head()), str(new_pixtup_df.head())))
-    choice = input("Do you want to continue? (y/n)")
-    if choice.lower() != 'y':
-        logger.warning("Saving new pixtup is cancelled.")
-        return False
-    logger.warning("You are about to concatenate the following Dataframes:\n %s \n and \n %s"
-                   % (str(old_xy_df.head()), str(new_xy_df.head())))
-    choice = input("Do you want to continue? (y/n)")
-    if choice.lower() != 'y':
-        logger.warning("Saving new pixtup is cancelled.")
-        return False
-    pixtup_df = pd.concat([old_pixtup_df, new_pixtup_df])
-    xy_df = pd.concat([old_xy_df, new_xy_df])
-    old_npos_df = pd.read_csv(CONFIG.raw_npos_path, header=None)
-    if img_num is None:
-        imgs = set(old_npos_df)
-        img_num = 0
-        while img_num in imgs:
-            img_num += 1
-    npos_df = pd.concat([old_npos_df, [img_num]*len(new_xy_df)])
-    if os.path.isdir(os.path.join(CONFIG.backup_data_path, 'raw_data')):
-        shutil.rmtree(os.path.join(CONFIG.backup_data_path, 'raw_data'))
-        logger.info("Deleted the last backup of raw files.")
-    shutil.move(CONFIG.raw_data_path, os.path.join(CONFIG.backup_data_path, 'raw_data'))
-    logger.info("Created a backup of raw files.")
-    os.mkdir(CONFIG.raw_data_path)
-    pixtup_df.to_csv(CONFIG.raw_pixtup_path, index=False, header=None)
-    xy_df.to_csv(CONFIG.raw_xy_path, index=False, header=None)
-    npos_df.to_csv(CONFIG.raw_npos_path, index=False, header=None)
-    logger.info("PixTup, XY and NPOS.csv updated.")
+            raise FileNotFoundError(in_path)
+        new_pixtup_df = pd.read_csv(in_path, sep=",", header=None)
+        if xy_file_name is None:
+            new_xy_df = new_pixtup_df.iloc[:, :2]
+            new_pixtup_df = new_pixtup_df.iloc[:, 2:19]
+        else:
+            new_pixtup_df = new_pixtup_df.iloc[:, 0:17]
+            new_xy_path = os.path.join(CONFIG.raw_data_path, xy_file_name)
+            if not os.path.isfile(in_path):
+                logger.error("No file %s was found in raw_data/ folder.")
+                raise FileNotFoundError(new_xy_path)
+            new_xy_df = pd.read_csv(new_xy_path, sep=",", header=None)
+        old_pixtup_df = pd.read_csv(CONFIG.raw_pixtup_path, header=None).iloc[:, 0:17]
+        old_xy_df = pd.read_csv(CONFIG.raw_xy_path, header=None)
+        logger.warning("You are about to concatenate the following Dataframes:\n %s \n and \n %s"
+                       % (str(old_pixtup_df.head()), str(new_pixtup_df.head())))
+        choice = input("Do you want to continue? (y/n)")
+        if choice.lower() != 'y':
+            logger.warning("Saving new pixtup is cancelled.")
+            return False
+        logger.warning("You are about to concatenate the following Dataframes:\n %s \n and \n %s"
+                       % (str(old_xy_df.head()), str(new_xy_df.head())))
+        choice = input("Do you want to continue? (y/n)")
+        if choice.lower() != 'y':
+            logger.warning("Saving new pixtup is cancelled.")
+            return False
+        pixtup_df = pd.concat([old_pixtup_df, new_pixtup_df])
+        xy_df = pd.concat([old_xy_df, new_xy_df])
+        old_npos_df = pd.read_csv(CONFIG.raw_npos_path, header=None)
+        if img_num is None:
+            imgs = set(old_npos_df)
+            img_num = 0
+            while img_num in imgs:
+                img_num += 1
+        npos_df = pd.concat([old_npos_df, [img_num]*len(new_xy_df)])
+        if os.path.isdir(os.path.join(CONFIG.backup_data_path, 'raw_data')):
+            shutil.rmtree(os.path.join(CONFIG.backup_data_path, 'raw_data'))
+            logger.info("Deleted the last backup of raw files.")
+        shutil.move(CONFIG.raw_data_path, os.path.join(CONFIG.backup_data_path, 'raw_data'))
+        logger.info("Created a backup of raw files.")
+        os.mkdir(CONFIG.raw_data_path)
+        pixtup_df.to_csv(CONFIG.raw_pixtup_path, index=False, header=None)
+        xy_df.to_csv(CONFIG.raw_xy_path, index=False, header=None)
+        npos_df.to_csv(CONFIG.raw_npos_path, index=False, header=None)
+        logger.info("PixTup, XY and NPOS.csv updated.")
+    else:
+        pixtup_df = pd.read_csv(CONFIG.raw_pixtup_path, header=None).iloc[:, 0:17]
+        xy_df = pd.read_csv(CONFIG.raw_xy_path, header=None)
+        npos_df = pd.read_csv(CONFIG.raw_npos_path, header=None)
     concat_df = pd.concat([npos_df, xy_df, pixtup_df], axis=1)
     concat_df.columns = CONFIG.all_columns
     concat_df.to_csv(CONFIG.current_data_path, index=False)
@@ -209,6 +215,11 @@ def run_neural_networks(nn, k_fold, test_imgs, train_imgs, save_model, model_nam
 
 
 if __name__ == '__main__':
+    # Uncomment to test the examples
+
+    # Step 0: Create database
+    # save_pixtup_in_database()
+
     # # ######################## Example 1.1: test new sklearn model ########################
     # from sklearn.svm import SVC
     # from sklearn.neighbors import KNeighborsClassifier

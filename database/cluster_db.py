@@ -1,7 +1,10 @@
 import os
 import random
 import pandas as pd
+import numpy as np
+from PIL import Image
 from configuration import CONFIG
+from utils import load_df
 
 
 class Cluster:
@@ -45,34 +48,45 @@ class Cluster:
         if self._normed:
             return
         self._normed = True
-        for Mij in ['M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24', 'M31', 'M32', 'M33', 'M34',
-                    'M41', 'M42', 'M43', 'M44']:
+        for Mij in CONFIG.all_mij_columns[1:]:
             self._df[Mij] = self._df['M11'] * self._df[Mij]
-        self._center = self._df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                                 'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].mean()
-        self._variances = self._df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                                    'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].var()
+        self._center = self._df[CONFIG.all_mij_columns].mean()
+        self._variances = self._df[CONFIG.all_mij_columns].var()
 
     @property
     def center(self):
         if self._center is None:
-            self._center = self.df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                                    'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].mean()
+            self._center = self.df[CONFIG.all_mij_columns].mean()
         return self._center
 
     @property
     def variances(self):
         if self._variances is None:
-            self._variances = self.df[['M11', 'M12', 'M13', 'M14', 'M21', 'M22', 'M23', 'M24',
-                                       'M31', 'M32', 'M33', 'M34', 'M41', 'M42', 'M43', 'M44']].var()
+            self._variances = self.df[CONFIG.all_mij_columns].var()
         return self._variances
 
     def _load_df(self):
         self._df = pd.read_csv(self.file_path)
 
-    def save(self):
-        # TODO (Pierre): code
-        """ Saves the cluster as png. """
+    def apply_cluster(self, array, nb_clusters):
+        # array : output, red=Ill, green=Safe
+        df = self.df[["x", "y"]]
+        if self.diagnosis == 4:
+            for index, row in df.iterrows():
+                x, y = row
+                array[x-1, y-1] = (0, int(255*(self.cluster_num+5)/(nb_clusters+5)), 0)
+        elif self.diagnosis == 3:
+            for index, row in df.iterrows():
+                x, y = row
+                array[x-1, y-1] = (int(255*(self.cluster_num+5)/(nb_clusters+5)), 0, 0)
+
+    def save(self, out_path):
+        height = CONFIG.height
+        width = CONFIG.width
+        array = np.zeros((height, width, 3), 'uint8')
+        self.apply_cluster(array, 1)
+        img = Image.fromarray(array)
+        img.save(out_path)
 
 
 class ClusterDB:
@@ -91,22 +105,15 @@ class ClusterDB:
     cluster1_4_2 = cdb[1, 4, 2]  # Access a given cluster.
     """
 
-    def __init__(self, db_path=None, metadata_path=None, center_path=None, variances_path=None, normed=None):
+    def __init__(self):
         # Set default paths
-        self._db_path = db_path if db_path is not None else CONFIG.db_path
-        if center_path is None:
-            center_path = CONFIG.center_path
-        if variances_path is None:
-            variances_path = CONFIG.variances_path
-        if metadata_path is None:
-            metadata_path = CONFIG.metadata_path
-        self._normed = normed
+        self._db_path = CONFIG.data_path
+        center_path = CONFIG.center_path
+        self._data_path = CONFIG.current_data_path
 
         # Initialize
         self._clusters = {}
         self.centers = pd.read_csv(center_path) if os.path.isfile(center_path) else None
-        self.variances = pd.read_csv(variances_path) if os.path.isfile(variances_path) else None
-        self._load_metadata(metadata_path)
 
     def __str__(self):
         info = "<ClusterDB: %i Clusters>\n" % self.nb_clusters
@@ -131,26 +138,6 @@ class ClusterDB:
     @property
     def sorted_cluster_keys(self):
         return sorted(self._clusters.keys())
-
-    def _load_metadata(self, metadata_path):
-        df = pd.read_csv(metadata_path, header=None,
-                         names=['img_num', 'diagnosis', 'cluster_num', 'file_name'])
-        for index, row in df.iterrows():
-            img_num, diagnosis, cluster_num, file_name = row
-            file_path = os.path.join(self._db_path, file_name)
-            center_s = None
-            variances_s = None
-            if self.centers is not None:
-                center_df = self.centers[self.centers['img_num'] == img_num][self.centers['cluster_num'] == cluster_num]
-                center_df = center_df[center_df['diagnosis'] == diagnosis].transpose()
-                center_s = center_df.iloc[:, 0]
-            if self.variances is not None:
-                vars_df = self.variances[self.variances['img_num'] == img_num]
-                vars_df = vars_df[vars_df['cluster_num'] == cluster_num][vars_df['diagnosis'] == diagnosis].transpose()
-                variances_s = vars_df.iloc[:, 0]
-            self._clusters[(img_num, diagnosis, cluster_num)] = \
-                Cluster(img_num, diagnosis, cluster_num, file_path, center=center_s, variances=variances_s,
-                        normed=self._normed)
 
     def filter_clusters(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
         """
@@ -185,58 +172,62 @@ class ClusterDB:
                 filtered_clusters.pop((i, d, c))
         return filtered_clusters
 
-    def filter(self, rebalance=False, seed=None, *, img_nums=None, diagnosis=None, cluster_nums=None, columns=None):
+    def filter(self, rebalance=False, seed=None, *, img_nums=None, diagnosis=None, columns=None):
         """
-        Selects matching clusters in the database.
+        Selects matching points in the database.
 
         Parameters
         ==========
 
-        rebalance: bool, guarantees to have the same number of each diagnosis after filtering
-        seed: int, sets the random number to rebalance the results
         img_nums: int or array, images to keep
         diagnosis: int or array, diagnosis to keep
-        cluster_nums: int or array, clusters to keep
-        columns: str or list of str, columns to keep
+        columns: str or array, columns to keep
+        rebalance: bool, whether the result should have as many points of each diagnosis
+        seed: int or None, seed of the random generator
 
         Returns
         =======
-        centers: The Dataframe of the centers matching the filter criteria
+        df: The pd.Dataframe of the points matching the filter
         """
-        centers = self.centers.copy()
+        df = load_df()
         if isinstance(img_nums, int):
             img_nums = [img_nums]
         if isinstance(diagnosis, int):
             diagnosis = [diagnosis]
-        if isinstance(cluster_nums, int):
-            cluster_nums = [cluster_nums]
         if isinstance(columns, str):
             columns = [columns]
+
         if img_nums is not None:
-            centers = centers[centers.img_num.isin(img_nums)]
+            df = df[df['img_num'].isin(img_nums)]
         if diagnosis is not None:
-            centers = centers[centers.diagnosis.isin(diagnosis)]
-        if cluster_nums is not None:
-            centers = centers[centers.cluster_nums.isin(cluster_nums)]
-        if columns is not None:
-            centers = centers[columns]
+            df = df[df['diagnosis'].isin(diagnosis)]
         if rebalance:
             random.seed(seed)
-            centers_3 = centers[centers['diagnosis'] == 3]
-            centers_4 = centers[centers['diagnosis'] == 4]
-            if not (len(centers_3) and len(centers_4)):
-                centers.drop(centers.index)
-            if len(centers_3) < len(centers_4):
-                idx = list(centers_4.index)
+            points3 = df[df['diagnosis'] == 3]
+            points4 = df[df['diagnosis'] == 4]
+            if len(points3) == 0 or len(points4) == 0:
+                # Cannot rebalance
+                return None
+            if len(points3) < len(points4):
+                idx = list(points4.index)
                 random.shuffle(idx)
-                centers.drop(idx[len(centers_3):], inplace=True)
-            if len(centers_3) > len(centers_4):
-                idx = list(centers_3.index)
+                df.drop(idx[len(points3):], inplace=True)
+            else:
+                idx = list(points3.index)
                 random.shuffle(idx)
-                centers.drop(idx[len(centers_4):], inplace=True)
-        if len(centers):
-            return centers
-        else:
-            return None  # No center matches the filter.
+                df.drop(idx[len(points4):], inplace=True)
+        if columns is not None:
+            df = df[df.columns.intersection(columns)]
+        return df
 
-
+    def save(self, *, img_nums=None, diagnosis=None, cluster_nums=None):
+        arrays = {}
+        temp_clusters = self.filter_clusters(img_nums=img_nums, diagnosis=diagnosis, cluster_nums=cluster_nums)
+        for (i, d, c) in self.sorted_cluster_keys:
+            if i not in arrays.keys():
+                arrays[i] = np.zeros((CONFIG.height, CONFIG.width, 3), 'uint8')
+            temp_clusters[i, d, c].apply_cluster(arrays[i], max(self.centers['cluster_num']))
+        for i, array in arrays.items():
+            img = Image.fromarray(array)
+            out_path = os.path.join(CONFIG.visualization_path, "clusters", "image%i.png" % i)
+            img.save(out_path)

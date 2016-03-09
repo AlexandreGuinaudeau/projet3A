@@ -7,8 +7,8 @@ import logging
 from matplotlib import pyplot as plt
 from PIL import Image
 
-from configuration import CONFIG
-from utils import minkowski, EmptyDataSet
+from ..configuration import CONFIG
+from ..utils import minkowski, EmptyDataSet
 from learning import neural_networks
 
 logger = logging.getLogger(__name__)

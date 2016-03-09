@@ -3,8 +3,9 @@ import random
 import pandas as pd
 import numpy as np
 from PIL import Image
-from configuration import CONFIG
-from utils import load_df
+
+from ..configuration import CONFIG
+from ..utils import load_df
 
 
 class Cluster:

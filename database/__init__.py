@@ -1,1 +1,1 @@
-from database.cluster_db import ClusterDB
+from .cluster_db import ClusterDB

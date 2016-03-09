@@ -4,8 +4,8 @@ import sys
 import pandas as pd
 from sklearn.cluster import KMeans
 
-from configuration import CONFIG
-from utils import load_df
+from ..configuration import CONFIG
+from ..utils import load_df
 
 
 logger = logging.getLogger(__name__)

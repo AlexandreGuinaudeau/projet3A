@@ -14,10 +14,10 @@ import numpy as np
 from sklearn.externals import joblib
 from PIL import Image
 
-from configuration import CONFIG
-from utils import get_train_test_data, EmptyDataSet
-from database import ClusterDB
-from learning import NeuralNetwork
+from .configuration import CONFIG
+from .utils import get_train_test_data, EmptyDataSet
+from .database import ClusterDB
+from .learning import NeuralNetwork
 
 
 logger = logging.getLogger(__name__)

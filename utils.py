@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import math
 from scipy.special import erf
-from configuration import CONFIG
+from .configuration import CONFIG
 logger = logging.getLogger(__name__)
 logger.setLevel(CONFIG.logging_level)
 
